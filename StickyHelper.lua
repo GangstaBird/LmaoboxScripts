@@ -179,6 +179,7 @@ local function ShouldBeActive()
         local_player:GetPropInt("m_PlayerClass", "m_iClass") == CLASS_DEMOMAN
 end
 
+local last_chat_print_time = 0
 local active_stickies = {}
 local auto_detonation_info = {}
 
@@ -350,7 +351,7 @@ local function AutoDetonate(cmd)
     local local_player = entities.GetLocalPlayer()
     local cur_time = globals.CurTime()
 
-    if cmd.buttons & E_UserCmd.IN_ATTACK2 ~= 0 then
+    if CanAutoDetonateWithCurrentWeapon(local_player) and cmd.buttons & E_UserCmd.IN_ATTACK2 ~= 0 then
         auto_detonation_info = {}
         return
     end
@@ -401,15 +402,16 @@ local function AutoDetonate(cmd)
             info.start_wait_time = 0
         end
 
-        local why = timed_out and "(forced) " or ""
-        if AUTO_DETONATE_PRINT_CHAT then
+        if AUTO_DETONATE_PRINT_CHAT and cur_time - last_chat_print_time > 1 then
+            local why = timed_out and "(forced) " or ""
+            local dmg_format = timed_out and " w/ %.0f dmg" or " w/ %.0f dmg (>= %.0f)"
             client.ChatPrintf(string.format(
-                "\x0725FF25[AutoDetonate]\x01 Detonating %s\x07FF0000%s\x01 w/ %.0f dmg (>= %.0f)\n",
+                "\x0725FF25[AutoDetonate]\x01 Detonating %s\x07FF0000%s\x01%s\n",
                 why,
                 player:GetName(),
-                total_accumulated_damage,
-                effective_health
+                string.format(dmg_format, total_accumulated_damage, effective_health)
             ))
+            last_chat_print_time = cur_time
         end
 
         cmd:SetButtons(cmd.buttons | E_UserCmd.IN_ATTACK2)
